@@ -100,6 +100,19 @@ Diagrams render as SVG and adapt when you change themes: Light and Sepia use lig
 
 Invalid diagrams show a message and expand their source while the rest of the document stays readable. If Mermaid cannot load, the source remains available. Mermaid uses strict security mode, so diagram click callbacks are disabled.
 
+### Diagram zoom
+
+Use **+** and **−** above each rendered diagram to zoom from 25% to 400% in
+25% steps. **Reset** returns that diagram to its initial size (100%), which fits
+the available width without enlarging small diagrams. Scroll within an enlarged
+diagram to inspect areas outside the viewport.
+
+For keyboard access, focus the diagram and press **+** or **=** to zoom in,
+**−** to zoom out, and **0** to reset. Arrow keys scroll the focused diagram.
+Each diagram has independent zoom, which is preserved when changing themes.
+Opening or refreshing a document resets its zoom. Printing fits diagrams to the
+page and hides the zoom controls. Zoom also works with optional Azure icons.
+
 ### Optional Azure service icons
 
 Azure icons can be added to flowcharts and architecture diagrams. The reader

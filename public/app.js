@@ -1,4 +1,4 @@
-import { renderDiagrams } from './diagrams.js';
+import { renderDiagrams, disposeDiagrams } from './diagrams.js';
 
 const $ = id => document.getElementById(id);
 let folder = '', currentFile = '', entries = [], rootName = '';
@@ -69,6 +69,7 @@ async function load() {
     $('welcome').hidden = !!file; $('document').hidden = !file;
     document.title = file ? `${documentData.name} · Markdown Reader` : 'Markdown Reader';
     if (documentData) {
+      disposeDiagrams($('content'));
       $('content').innerHTML = documentData.html;
       // Give headings stable anchors for local Markdown links.
       const ids = new Map();

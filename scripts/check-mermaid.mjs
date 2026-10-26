@@ -35,6 +35,49 @@ server.on('request', (req, res) => {
           output.id = 'browser-icon-colors';
           output.textContent = paths.map(node => getComputedStyle(node).fill).join('|');
           document.body.append(output);
+          const result = document.createElement('output');
+          result.id = 'browser-zoom-checks';
+          document.body.append(result);
+          try {
+            const ensure = (condition, message) => { if (!condition) throw new Error(message); };
+            const figures = [...document.querySelectorAll('.mermaid-diagram')];
+            const first = figures[0];
+            const viewport = first.querySelector('.mermaid-output');
+            const zoom = first.querySelector('.mermaid-zoom');
+            const plus = zoom.querySelector('[aria-label="Zoom in"]');
+            const minus = zoom.querySelector('[aria-label="Zoom out"]');
+            const reset = zoom.querySelector('[aria-label="Reset diagram zoom"]');
+            const level = zoom.querySelector('output');
+            const width = () => viewport.querySelector('svg').getBoundingClientRect().width;
+            const originalWidth = width();
+            plus.click();
+            ensure(level.value === '125%' && Math.abs(width() / originalWidth - 1.25) < 0.02, 'Zoom in must enlarge the SVG');
+            ensure(figures[2].querySelector('.mermaid-zoom output').value === '100%', 'Zoom must be independent');
+            viewport.dispatchEvent(new KeyboardEvent('keydown', { key: '-' }));
+            ensure(level.value === '100%', 'Keyboard zoom out');
+            viewport.dispatchEvent(new KeyboardEvent('keydown', { key: '+' }));
+            ensure(level.value === '125%', 'Keyboard zoom in');
+            for (let step = 0; step < 30; step++) plus.click();
+            ensure(level.value === '400%' && plus.disabled, 'Upper zoom limit');
+            ensure(viewport.scrollWidth > viewport.clientWidth, 'Large diagrams must scroll horizontally');
+            for (let step = 0; step < 30; step++) minus.click();
+            ensure(level.value === '25%' && minus.disabled, 'Lower zoom limit');
+            reset.click();
+            ensure(level.value === '100%' && Math.abs(width() - originalWidth) < 1 && reset.disabled, 'Reset restores the original fit');
+            plus.click();
+            viewport.dispatchEvent(new KeyboardEvent('keydown', { key: '0' }));
+            ensure(level.value === '100%', 'Keyboard reset');
+            plus.click(); plus.click();
+            const svgId = viewport.querySelector('svg').id;
+            const theme = document.getElementById('theme');
+            theme.value = 'ocean';
+            theme.dispatchEvent(new Event('change'));
+            for (let attempt = 0; attempt < 100 && viewport.querySelector('svg').id === svgId; attempt++) await wait(50);
+            ensure(viewport.querySelector('svg').id !== svgId && level.value === '150%', 'Zoom survives theme rendering');
+            ensure(Math.abs(width() / originalWidth - 1.5) < 0.02, 'Theme rerender retains displayed scale');
+            ensure(figures.filter(figure => !figure.querySelector('.mermaid-error').hidden).every(figure => figure.querySelector('.mermaid-zoom').hidden), 'Failed diagrams hide zoom controls');
+            result.textContent = 'passed';
+          } catch (error) { result.textContent = error.message; }
           break;
         }
         await wait(50);
@@ -68,6 +111,7 @@ try {
   const url = `http://127.0.0.1:${server.address().port}/?file=diagram.md`;
   const child = spawn(browser, [
     '--headless', '--disable-gpu', '--no-first-run', '--no-default-browser-check',
+    '--window-size=1000,800',
     `--user-data-dir=${path.join(temporary, 'profile')}`,
     '--virtual-time-budget=15000', '--dump-dom', url,
   ], { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -89,7 +133,9 @@ try {
     assert.match(output, /fill="#008abc"/, 'Registered artwork retains its color');
     assert.match(output, /id="browser-icon-colors">rgb\(0, 138, 188\)\|rgb\(0, 138, 188\)/, 'Both diagram types preserve displayed icon colors');
     assert.match(output, /Azure icon "not-installed" is not installed/, 'Unavailable aliases show an actionable message');
-    console.log('Browser checks passed: flowcharts, local icon registration, architecture icons, missing aliases, invalid syntax, ordinary code, and CSP.');
+    const zoomResult = output.match(/id="browser-zoom-checks">([^<]*)/)?.[1];
+    assert.equal(zoomResult, 'passed', 'Zoom buttons, sizing, bounds, scrolling, keyboard access, reset, and theme persistence');
+    console.log('Browser checks passed: diagram and icon rendering, zoom interactions and theme persistence, error fallbacks, ordinary code, and CSP.');
   } finally { clearTimeout(timer); }
 } finally {
   await new Promise(resolve => server.close(resolve));
