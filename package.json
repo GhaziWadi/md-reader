@@ -6,11 +6,15 @@
   "description": "Browse local folders and read Markdown in your browser.",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test"
+    "test": "node --test",
+    "test:browser": "node scripts/check-mermaid.mjs"
   },
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=22.12"
+  },
   "dependencies": {
     "marked": "^17.0.0",
+    "mermaid": "^12.2.0",
     "sanitize-html": "^2.17.0"
   }
 }

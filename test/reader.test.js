@@ -73,3 +73,25 @@ test('sanitizes unsafe HTML and resolves relative document links and images', ()
   assert.match(html, /type="checkbox"/);
   assert.match(html, /disabled/);
 });
+
+test('preserves Mermaid source safely and keeps ordinary code blocks', () => {
+  const html = renderMarkdown('```mermaid\nflowchart TD\n A[<script>alert(1)</script>] --> B[Read]\n```\n\n```js\nconst x = 1;\n```', 'notes.md');
+  assert.match(html, /<code class="language-mermaid">/);
+  assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
+  assert.doesNotMatch(html, /<script>/);
+  assert.match(html, /<code class="language-js">const x = 1;/);
+});
+
+test('serves Mermaid module and its chunks locally without exposing other dependencies', async () => {
+  const response = await fetch(`${base}/vendor/mermaid/mermaid.esm.min.mjs`);
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get('content-type'), /javascript/);
+  const source = await response.text();
+  const chunks = [...source.matchAll(/["'](\.\/chunks\/[^"']+\.mjs)["']/g)].map(match => match[1]);
+  assert.ok(chunks.length > 0, 'Mermaid imports local chunks');
+  for (const chunk of chunks) {
+    assert.equal((await fetch(new URL(chunk, response.url))).status, 200, chunk);
+  }
+  assert.equal((await fetch(`${base}/vendor/mermaid/package.json`)).status, 404);
+  assert.equal((await fetch(`${base}/vendor/mermaid/%2e%2e%2f%2e%2e%2fmarked/lib/marked.esm.mjs`)).status, 403);
+});

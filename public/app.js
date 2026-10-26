@@ -1,3 +1,5 @@
+import { renderDiagrams } from './diagrams.js';
+
 const $ = id => document.getElementById(id);
 let folder = '', currentFile = '', entries = [], rootName = '';
 let navigation = 0;
@@ -75,6 +77,8 @@ async function load() {
       $('file-label').textContent = documentData.name;
       $('read-time').textContent = `${Math.max(1, Math.ceil($('content').textContent.split(/\s+/).length / 220))} min read`;
       $('modified').textContent = `Last updated ${new Date(documentData.modified).toLocaleString()}`;
+      await renderDiagrams($('content'), document.documentElement.dataset.theme);
+      if (request !== navigation) return;
     }
     if (location.hash) {
       document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView();
@@ -87,6 +91,7 @@ $('refresh').onclick = load;
 $('theme').onclick = () => {
   const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
   document.documentElement.dataset.theme = theme; localStorage.setItem('md-reader-theme', theme);
+  renderDiagrams($('content'), theme);
 };
 $('print').onclick = () => window.print();
 $('content').onclick = event => {

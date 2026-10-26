@@ -7,15 +7,21 @@ import { marked } from 'marked';
 import sanitizeHtml from 'sanitize-html';
 
 const publicRoot = fileURLToPath(new URL('./public/', import.meta.url));
+const mermaidRoot = fileURLToPath(new URL('./node_modules/mermaid/dist/', import.meta.url));
 const isMarkdown = name => /\.(md|markdown|mdown)$/i.test(name);
 const mime = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
 
 export async function safePath(root, relative = '') {
-  const candidate = await fs.realpath(path.resolve(root, relative));
-  const difference = path.relative(root, candidate);
-  if (difference === '..' || difference.startsWith(`..${path.sep}`) || path.isAbsolute(difference)) {
-    throw Object.assign(new Error('This path is outside the selected folder.'), { status: 403 });
+  function check(candidate) {
+    const difference = path.relative(root, candidate);
+    if (difference === '..' || difference.startsWith(`..${path.sep}`) || path.isAbsolute(difference)) {
+      throw Object.assign(new Error('This path is outside the selected folder.'), { status: 403 });
+    }
   }
+  const resolved = path.resolve(root, relative);
+  check(resolved);
+  const candidate = await fs.realpath(resolved);
+  check(candidate);
   return candidate;
 }
 
@@ -51,7 +57,7 @@ export async function createReader(directory) {
   if (!(await fs.stat(root)).isDirectory()) throw new Error('Choose a directory, not a file.');
   return http.createServer(async (req, res) => {
     const send = (status, body, type = 'application/json; charset=utf-8') => {
-      res.writeHead(status, { 'Content-Type': type, 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store', 'Content-Security-Policy': "default-src 'self'; img-src 'self' https: http:; style-src 'self'; script-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'" });
+      res.writeHead(status, { 'Content-Type': type, 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store', 'Content-Security-Policy': "default-src 'self'; img-src 'self' https: http:; style-src 'self' 'unsafe-inline'; script-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'" });
       res.end(type.startsWith('application/json') ? JSON.stringify(body) : body);
     };
     try {
@@ -81,7 +87,13 @@ export async function createReader(directory) {
         if (!['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.ico'].includes(extension)) return send(403, { error: 'Only image attachments can be served directly.' });
         return send(200, await fs.readFile(await safePath(root, relative)), mime[extension]);
       }
-      const assets = { '/': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css' };
+      // Mermaid's ESM bundle imports diagram-specific chunks from this directory.
+      if (url.pathname.startsWith('/vendor/mermaid/')) {
+        const relative = decodeURIComponent(url.pathname.slice('/vendor/mermaid/'.length));
+        if (!relative.endsWith('.mjs')) return send(404, { error: 'Not found.' });
+        return send(200, await fs.readFile(await safePath(mermaidRoot, relative)), 'text/javascript; charset=utf-8');
+      }
+      const assets = { '/': 'index.html', '/app.js': 'app.js', '/diagrams.js': 'diagrams.js', '/style.css': 'style.css' };
       const asset = assets[url.pathname];
       if (!asset) return send(404, { error: 'Not found.' });
       send(200, await fs.readFile(path.join(publicRoot, asset)), mime[path.extname(asset)]);
