@@ -43,7 +43,7 @@ export function renderDiagrams(root, theme) {
       mermaid.initialize({
         startOnLoad: false,
         securityLevel: 'strict',
-        theme: theme === 'dark' ? 'dark' : 'default',
+        theme: ['dark', 'ocean'].includes(theme) ? 'dark' : 'default',
         fontFamily: 'Segoe UI, system-ui, sans-serif',
         htmlLabels: false,
         flowchart: { htmlLabels: false },

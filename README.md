@@ -54,7 +54,20 @@ To browse a different root directory, stop the app and start it again with the n
 
 The filter searches names in the current folder; it does not search file contents or nested folders. Click **Refresh** to reload the folder listing and the open document after editing files elsewhere. The reader does not watch for changes automatically.
 
-Browser Back and Forward restore previous locations. You can bookmark a document URL while using the same root directory and port. The appearance button switches between light and dark themes and remembers your choice in the browser. **Print** opens the browser's print dialog with a document-focused layout.
+Browser Back and Forward restore previous locations. You can bookmark a document URL while using the same root directory and port. **Print** opens the browser's print dialog with a document-focused layout.
+
+### Color themes
+
+Choose a theme from the dropdown next to **Print**. Your selection is remembered in the browser. On your first visit, the reader follows your system's light or dark preference.
+
+| Theme | Appearance |
+| --- | --- |
+| Light | Soft white pages with green accents. |
+| Dark | Charcoal green pages with pale green accents. |
+| Sepia | Warm cream pages with brown accents. |
+| Ocean | Deep blue pages with turquoise accents. |
+
+The theme applies to the sidebar, document, tables, code blocks, and controls. Mermaid diagrams use a matching light or dark appearance.
 
 ### Markdown links and images
 
@@ -83,7 +96,7 @@ flowchart TD
 ```
 ````
 
-Diagrams render as SVG and adapt when you switch between light and dark themes. Expand **Diagram source** beneath a diagram to view its definition. Other fenced code blocks remain ordinary code.
+Diagrams render as SVG and adapt when you change themes: Light and Sepia use light diagrams; Dark and Ocean use dark diagrams. Expand **Diagram source** beneath a diagram to view its definition. Other fenced code blocks remain ordinary code.
 
 Invalid diagrams show a message and expand their source while the rest of the document stays readable. If Mermaid cannot load, the source remains available. Mermaid uses strict security mode, so diagram click callbacks are disabled.
 

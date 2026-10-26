@@ -4,7 +4,10 @@ const $ = id => document.getElementById(id);
 let folder = '', currentFile = '', entries = [], rootName = '';
 let navigation = 0;
 const storedTheme = localStorage.getItem('md-reader-theme');
-document.documentElement.dataset.theme = storedTheme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+const themes = [...$('theme').options].map(option => option.value);
+const initialTheme = themes.includes(storedTheme) ? storedTheme : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+document.documentElement.dataset.theme = initialTheme;
+$('theme').value = initialTheme;
 
 function showError(error) { $('message').textContent = error.message; $('message').hidden = false; }
 async function api(endpoint, relative) {
@@ -88,8 +91,8 @@ async function load() {
 $('search').oninput = renderFiles;
 $('up').onclick = () => navigate({ folder: folder.split('/').slice(0, -1).join('/') });
 $('refresh').onclick = load;
-$('theme').onclick = () => {
-  const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+$('theme').onchange = () => {
+  const theme = $('theme').value;
   document.documentElement.dataset.theme = theme; localStorage.setItem('md-reader-theme', theme);
   renderDiagrams($('content'), theme);
 };
