@@ -100,6 +100,23 @@ Diagrams render as SVG and adapt when you change themes: Light and Sepia use lig
 
 Invalid diagrams show a message and expand their source while the rest of the document stays readable. If Mermaid cannot load, the source remains available. Mermaid uses strict security mode, so diagram click callbacks are disabled.
 
+### Optional Azure service icons
+
+Azure icons can be added to flowcharts and architecture diagrams. The reader
+does not bundle Microsoft's artwork: install your own pack from the official
+download using the [Azure icon installation guide](docs/azure-icons.md).
+The importer keeps original artwork, terms, notices, and provenance in ignored
+`.local/azure-icons/`. Rendering stays local, with no Azure subscription or paid API.
+
+After reviewing the current Microsoft and archive terms, the import command is:
+
+```powershell
+npm run icons:import -- "C:\Downloads\Azure-icons" --archive "C:\Downloads\Azure-icons.zip" --terms "C:\Downloads\Azure-icon-terms.txt" --accept-terms
+```
+
+Restart and refresh after installation. Available aliases and examples are in the
+guide. Missing packs or aliases show a message and the diagram source.
+
 ## Troubleshooting
 
 | Problem | What to do |
@@ -145,3 +162,26 @@ npm run test:browser
 ```
 
 The browser test starts its own temporary server and uses temporary Markdown files and a separate browser profile; it does not require the reader to be running.
+It tests Azure pack registration with original geometric fixtures, without
+downloading or redistributing Microsoft artwork.
+
+## Licensing and releases
+
+Original application code and documentation are available under the [MIT license](LICENSE).
+Third-party dependencies and optional Azure artwork retain their own terms; see
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). MIT allows commercial reuse;
+this project is provided at no charge.
+
+Use `npm ci` for reproducible installations from the committed lockfile. After
+updating dependencies, regenerate their notices and check the changes into Git:
+
+```powershell
+npm run licenses:generate
+npm run licenses:check
+```
+
+Include `LICENSE`, `THIRD_PARTY_NOTICES.md`, and the complete `licenses/` directory
+in releases, retain dependency notices in any shipped packages, and preserve
+license comments in browser bundles. Review generated inventory warnings and
+upstream terms before distribution. Do not include `.local/` or Microsoft icon
+downloads in MIT-only source releases. The core app works without the optional pack.

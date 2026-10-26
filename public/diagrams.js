@@ -3,6 +3,7 @@ let queue = Promise.resolve();
 let revision = 0;
 let diagramId = 0;
 const sources = new WeakMap();
+let azurePack;
 
 // Serialize Mermaid's global configuration and rendering across theme changes.
 export function renderDiagrams(root, theme) {
@@ -57,13 +58,26 @@ export function renderDiagrams(root, theme) {
     for (const { figure, source } of blocks) {
       if (current !== revision || !figure.isConnected) return;
       try {
+        if (/\bazure:/.test(source)) {
+          if (!azurePack) {
+            const response = await fetch('/api/icons/azure');
+            if (!response.ok) throw new Error('Azure icons are not installed. Follow docs/azure-icons.md, then refresh this page.');
+            const pack = await response.json();
+            if (pack.prefix !== 'azure' || !pack.icons) throw new Error('The local Azure icon pack is invalid. Reimport it using docs/azure-icons.md.');
+            mermaid.registerIconPacks([{ name: 'azure', icons: pack }]);
+            azurePack = pack;
+          }
+          const missing = [...source.matchAll(/\bazure:([a-z0-9-]+)/g)].map(match => match[1]);
+          // Mermaid otherwise draws a question mark for unavailable icons.
+          for (const name of missing) if (!Object.hasOwn(azurePack.icons, name)) throw new Error(`Azure icon "${name}" is not installed. Check .local/azure-icons/SOURCE.json.`);
+        }
         const { svg } = await mermaid.render(`reader-diagram-${++diagramId}`, source);
         if (current !== revision || !figure.isConnected) return;
         figure.querySelector('.mermaid-output').innerHTML = svg;
         figure.querySelector('.mermaid-error').hidden = true;
-      } catch {
+      } catch (error) {
         if (current !== revision || !figure.isConnected) return;
-        showFailure(figure, 'This Mermaid diagram could not be rendered. Check its source below.');
+        showFailure(figure, /^Azure icon|^The local Azure/.test(error.message) ? error.message : 'This Mermaid diagram could not be rendered. Check its source below.');
       }
     }
   };

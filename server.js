@@ -52,7 +52,7 @@ function localUrl(value, relative) {
   return new URL(value, base).pathname + new URL(value, base).search + new URL(value, base).hash;
 }
 
-export async function createReader(directory) {
+export async function createReader(directory, { iconPack = fileURLToPath(new URL('./.local/azure-icons/azure-icons.json', import.meta.url)) } = {}) {
   const root = await fs.realpath(path.resolve(directory));
   if (!(await fs.stat(root)).isDirectory()) throw new Error('Choose a directory, not a file.');
   return http.createServer(async (req, res) => {
@@ -63,6 +63,15 @@ export async function createReader(directory) {
     try {
       if (req.method !== 'GET') return send(405, { error: 'Only reading is supported.' });
       const url = new URL(req.url, 'http://localhost');
+      if (url.pathname === '/api/icons/azure') {
+        try {
+          const pack = JSON.parse(await fs.readFile(iconPack, 'utf8'));
+          return send(200, pack);
+        } catch (error) {
+          if (error.code === 'ENOENT') return send(404, { error: 'Azure icons are optional. Follow docs/azure-icons.md to install your own pack.' });
+          throw error;
+        }
+      }
       if (url.pathname === '/api/list') {
         const relative = url.searchParams.get('path') || '';
         const folder = await safePath(root, relative);

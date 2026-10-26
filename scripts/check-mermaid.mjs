@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { createReader } from '../server.js';
+import { svgToIcon } from './import-azure-icons.mjs';
 
 const candidates = [process.env.BROWSER_PATH,
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -17,13 +18,51 @@ for (const candidate of candidates) {
 if (!browser) throw new Error('Chrome or Edge not found. Set BROWSER_PATH to its executable.');
 
 const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'md-reader-browser-'));
-const server = await createReader(temporary);
+const iconPack = path.join(temporary, 'synthetic-icons.json');
+const server = await createReader(temporary, { iconPack });
+// Add a test-only probe; production pages never load this script.
+const handler = server.listeners('request')[0];
+server.removeAllListeners('request');
+server.on('request', (req, res) => {
+  if (req.url === '/browser-probe.js') {
+    res.writeHead(200, { 'Content-Type': 'text/javascript' });
+    res.end(`
+      const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+      for (let i = 0; i < 100; i++) {
+        const paths = [...document.querySelectorAll('.mermaid-output [fill="#008abc"]')];
+        if (paths.length >= 2) {
+          const output = document.createElement('output');
+          output.id = 'browser-icon-colors';
+          output.textContent = paths.map(node => getComputedStyle(node).fill).join('|');
+          document.body.append(output);
+          break;
+        }
+        await wait(50);
+      }
+    `);
+    return;
+  }
+  if (req.url.startsWith('/?file=')) {
+    const end = res.end;
+    res.end = function (body, ...rest) {
+      return end.call(this, body.toString().replace('</body>', '<script type="module" src="/browser-probe.js"></script></body>'), ...rest);
+    };
+  }
+  handler(req, res);
+});
 try {
+  // Original geometric test artwork, not Microsoft's Azure assets.
+  await fs.writeFile(iconPack, JSON.stringify({ prefix: 'azure', icons: {
+    'app-service': svgToIcon('<svg viewBox="0 0 18 18"><path fill="#008abc" d="M1 1h16v16H1z"/></svg>'),
+  } }));
   await fs.writeFile(path.join(temporary, 'diagram.md'), [
     '# Diagram check',
     '```mermaid', 'flowchart TD', ' A[Start] --> B[Read]', '```',
     '```mermaid', 'this is not a diagram', '```',
     '```js', 'const ordinaryCode = 1;', '```',
+    '```mermaid', 'flowchart LR', ' app@{ icon: "azure:app-service", label: "Synthetic icon test" }', '```',
+    '```mermaid', 'architecture-beta', ' service app(azure:app-service)[Synthetic icon test]', '```',
+    '```mermaid', 'flowchart LR', ' app@{ icon: "azure:not-installed", label: "Missing icon test" }', '```',
   ].join('\n\n'));
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const url = `http://127.0.0.1:${server.address().port}/?file=diagram.md`;
@@ -46,7 +85,11 @@ try {
     assert.match(output, /This Mermaid diagram could not be rendered/, 'Invalid diagram shows its fallback');
     assert.match(output, /<code class="language-js">\s*const ordinaryCode = 1;/, 'Regular code stays intact');
     assert.doesNotMatch(errors, /Refused to (?:apply|execute|load)/, 'CSP permits diagram resources');
-    console.log('Browser checks passed: flowchart SVG, invalid-diagram fallback, ordinary code, and CSP.');
+    assert.ok((output.match(/<svg[^>]+id="reader-diagram-/g) || []).length >= 3, 'Flowchart, icon flowchart, and architecture diagrams render');
+    assert.match(output, /fill="#008abc"/, 'Registered artwork retains its color');
+    assert.match(output, /id="browser-icon-colors">rgb\(0, 138, 188\)\|rgb\(0, 138, 188\)/, 'Both diagram types preserve displayed icon colors');
+    assert.match(output, /Azure icon "not-installed" is not installed/, 'Unavailable aliases show an actionable message');
+    console.log('Browser checks passed: flowcharts, local icon registration, architecture icons, missing aliases, invalid syntax, ordinary code, and CSP.');
   } finally { clearTimeout(timer); }
 } finally {
   await new Promise(resolve => server.close(resolve));

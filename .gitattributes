@@ -1,0 +1,2 @@
+# Keep copied upstream notices byte-for-byte across Windows and Unix checkouts.
+licenses/dependencies/** -text
