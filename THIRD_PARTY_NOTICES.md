@@ -36,3 +36,11 @@ checksums, and generated icon data live in ignored `.local/azure-icons/`.
 Do not add that directory to an MIT-only source distribution. Users install
 their own pack. If separately redistributing icons for a permitted use, include
 their applicable terms and provenance and review the original archive's notices.
+
+The optional standalone Entra ID logo comes from the separate
+[Microsoft Entra architecture icons](https://learn.microsoft.com/en-us/entra/architecture/architecture-icons)
+download. It is not included in this repository. The supplemental importer
+preserves the original icon, ZIP, terms of use, branding playbook, and provenance
+in ignored `.local/entra-icons/`. That artwork is subject to the Entra pack's
+Microsoft terms, including its architecture/documentation use and branding
+restrictions, and is not relicensed under MIT.

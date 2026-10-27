@@ -52,7 +52,10 @@ function localUrl(value, relative) {
   return new URL(value, base).pathname + new URL(value, base).search + new URL(value, base).hash;
 }
 
-export async function createReader(directory, { iconPack = fileURLToPath(new URL('./.local/azure-icons/azure-icons.json', import.meta.url)) } = {}) {
+export async function createReader(directory, {
+  iconPack = fileURLToPath(new URL('./.local/azure-icons/azure-icons.json', import.meta.url)),
+  entraIconPack = fileURLToPath(new URL('./.local/entra-icons/entra-icons.json', import.meta.url)),
+} = {}) {
   const root = await fs.realpath(path.resolve(directory));
   if (!(await fs.stat(root)).isDirectory()) throw new Error('Choose a directory, not a file.');
   return http.createServer(async (req, res) => {
@@ -66,6 +69,11 @@ export async function createReader(directory, { iconPack = fileURLToPath(new URL
       if (url.pathname === '/api/icons/azure') {
         try {
           const pack = JSON.parse(await fs.readFile(iconPack, 'utf8'));
+          try {
+            const entra = JSON.parse(await fs.readFile(entraIconPack, 'utf8'));
+            if (entra.prefix !== 'azure' || !entra.icons?.['entra-id']) throw new Error('Invalid supplemental Entra icon pack.');
+            pack.icons['entra-id'] = entra.icons['entra-id'];
+          } catch (error) { if (error.code !== 'ENOENT') throw error; }
           return send(200, pack);
         } catch (error) {
           if (error.code === 'ENOENT') return send(404, { error: 'Azure icons are optional. Follow docs/azure-icons.md to install your own pack.' });

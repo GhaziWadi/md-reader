@@ -141,7 +141,10 @@ export function renderDiagrams(root, theme) {
           }
           const missing = [...source.matchAll(/\bazure:([a-z0-9-]+)/g)].map(match => match[1]);
           // Mermaid otherwise draws a question mark for unavailable icons.
-          for (const name of missing) if (!Object.hasOwn(azurePack.icons, name)) throw new Error(`Azure icon "${name}" is not installed. Check .local/azure-icons/SOURCE.json.`);
+          for (const name of missing) if (!Object.hasOwn(azurePack.icons, name)) {
+            if (name === 'entra-id') throw new Error('Azure icon "entra-id" is not installed. Use npm run icons:import-entra; see docs/azure-icons.md.');
+            throw new Error(`Azure icon "${name}" is not installed. Check .local/azure-icons/SOURCE.json.`);
+          }
         }
         const { svg } = await mermaid.render(`reader-diagram-${++diagramId}`, source);
         if (current !== revision || !figure.isConnected) return;

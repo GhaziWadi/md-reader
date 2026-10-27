@@ -10,6 +10,7 @@
     "test": "node --test",
     "test:browser": "node scripts/check-mermaid.mjs",
     "icons:import": "node scripts/import-azure-icons.mjs",
+    "icons:import-entra": "node scripts/import-entra-icon.mjs",
     "licenses:generate": "node scripts/dependency-licenses.mjs",
     "licenses:check": "node scripts/dependency-licenses.mjs --check"
   },

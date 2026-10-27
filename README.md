@@ -134,7 +134,21 @@ The importer scans the entire selected folder recursively. Browse
 and any SVGs skipped during validation. The original seven service aliases are
 preserved when available; additional service names are generated automatically.
 
+## Public architecture samples
+
+The examples use `azure:entra-id` from the [optional supplemental Entra pack](docs/azure-icons.md#microsoft-entra-id-logo)
+in addition to the base Azure icons. Install it with `npm run icons:import-entra`
+as described in the guide; all artwork and terms remain Git-ignored locally.
+
+- [Private Azure web application](docs/examples/azure-private-web-app.md): Application Gateway, private endpoints, and App Service availability zones.
+- [AKS microservices](docs/examples/aks-microservices.md): ingress, namespaces, container delivery, external data stores, and platform services.
+
+Both are public Mermaid source examples included in the repository. Azure
+artwork is loaded from the optional local icon pack. Point the reader at the
+project directory and browse `docs/examples` to view them.
+
 ## Troubleshooting
+
 
 | Problem | What to do |
 | --- | --- |

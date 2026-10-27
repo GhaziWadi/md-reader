@@ -5,7 +5,7 @@ for the reader; the subnets, private endpoints, service instances, and supportin
 resources follow the reference. Solid arrows show application connectivity;
 dotted lines show DNS, protection, identity, and monitoring relationships.
 
-This example requires the [optional Azure icon pack](../azure-icons.md).
+This example requires the [optional Azure and supplemental Entra icon packs](../azure-icons.md).
 Use the diagram's **+**, **−**, and **Reset** controls to inspect the details.
 
 ```mermaid
@@ -63,7 +63,7 @@ flowchart TB
             direction LR
             dns@{ icon: "azure:dns-zones", label: "Private DNS zones", pos: "b" }
             ddos@{ icon: "azure:ddos-protection-plans", label: "DDoS protection", pos: "b" }
-            entra["Microsoft Entra ID - Identity"]
+            entra@{ icon: "azure:entra-id", label: "Microsoft Entra ID - Identity", pos: "b" }
         end
 
         subgraph monitoring["Monitoring - outside the request path"]
@@ -110,5 +110,5 @@ flowchart TB
 The health-model preview label reproduces the supplied reference image rather
 than asserting current Azure availability. The source image's Microsoft branding
 and artwork are not bundled here; the service icons come from your local pack.
-Your current Azure archive does not include the standalone Entra ID logo, so that
-resource uses a text node rather than substituting another service's icon.
+The standalone Entra ID logo comes from the supplemental official Entra pack
+rather than substituting another service's icon.

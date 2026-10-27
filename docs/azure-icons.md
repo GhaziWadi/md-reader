@@ -60,11 +60,45 @@ aliases such as `azure:example-012345abcdef`; use the exact name in the catalog.
 This avoids choosing one version silently. All other service names are generated
 automatically; no edits to the importer are needed to add services.
 
+## Microsoft Entra ID logo
+
+The Azure archive may omit the standalone Entra ID logo. Install Microsoft's
+separate [official Entra architecture icon pack](https://learn.microsoft.com/en-us/entra/architecture/architecture-icons)
+to enable the stable alias `azure:entra-id` used in the public examples.
+
+1. Download and extract the official Entra ZIP. Read its terms of use and branding
+   playbook. Keep the original ZIP and included `Microsoft Terms of Use.docx`.
+2. After accepting the applicable terms, run:
+
+   ```powershell
+   npm run icons:import-entra -- "C:\Downloads\Entra-extracted" --archive "C:\Downloads\Microsoft-Entra-icons.zip" --terms "C:\Downloads\Entra-extracted\Microsoft Terms of Use.docx" --accept-terms
+   ```
+
+   The extracted folder is searched recursively for the exact official
+   `Microsoft Entra ID color icon.svg`; monochrome and product-family logos are
+   not substituted for it. Adjust the terms path to its actual location.
+3. Restart and refresh. The server combines `azure:entra-id` with the main Azure
+   pack, retaining the existing service names. Install the base Azure pack first.
+
+The supplement lives in ignored `.local/entra-icons/`, separate from the base
+pack. It preserves the original SVG, ZIP, original terms file (including its
+extension), supplied branding/notice files, and a `SOURCE.json` with the official
+source URL, import timestamp, original filename, and SHA-256 checksums. No icon
+artwork is copied into the repository or fetched from a CDN at runtime.
+
+The command refuses to overwrite an existing supplement. Move that directory to
+a backup location before replacing it. Its Microsoft terms apply separately from
+the project's MIT license. Do not recolor or distort the logo when changing themes.
+
 ## Example flowchart
 
 For a complete example with subnets, private endpoints, availability zones,
 and monitoring, open [Private Azure web application](examples/azure-private-web-app.md)
 in the reader. It recreates the architecture image supplied with this project.
+
+For Kubernetes, see [AKS microservices with CI/CD and external data stores](examples/aks-microservices.md),
+which includes ingress, front-end/back-end namespaces, Helm delivery, a container
+registry, managed identities, observability, and external data services.
 
 ````markdown
 ```mermaid

@@ -5,9 +5,49 @@ import path from 'node:path';
 import os from 'node:os';
 import { svgToIcon, importAzureIcons, iconName } from '../scripts/import-azure-icons.mjs';
 import { createReader } from '../server.js';
+import { importEntraIcon } from '../scripts/import-entra-icon.mjs';
 
 // Original test artwork, not a Microsoft icon.
 const sample = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="2 3 24 18" fill="#0078d4"><defs><linearGradient id="a"><stop stop-color="#fff"/></linearGradient></defs><rect x="2" y="3" width="24" height="18" fill="url(#a)"/></svg>';
+
+test('supplemental Entra import preserves original files and merges the correct service alias', async () => {
+  const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'md-reader-entra-'));
+  let server;
+  try {
+    const source = path.join(temporary, 'source');
+    await fs.mkdir(source);
+    await fs.writeFile(path.join(source, 'Microsoft Entra ID color icon.svg'), sample);
+    await fs.writeFile(path.join(source, 'Microsoft Entra BW icon (product family).svg'), sample);
+    await fs.writeFile(path.join(source, 'Branding Playbook.pptx'), 'Synthetic fixture notice');
+    const archive = path.join(temporary, 'official-fixture.zip');
+    const terms = path.join(source, 'Microsoft Terms of Use.docx');
+    await fs.writeFile(archive, Buffer.from([80, 75, 1, 2]));
+    await fs.writeFile(terms, Buffer.from([80, 75, 3, 4]));
+    const output = path.join(temporary, 'supplement');
+    const options = { source, archive, terms, output };
+    await assert.rejects(importEntraIcon(options), /accept-terms/);
+    const manifest = await importEntraIcon({ ...options, accepted: true });
+    assert.equal(manifest.alias, 'azure:entra-id');
+    assert.equal(manifest.original, 'Microsoft Entra ID color icon.svg');
+    assert.deepEqual(await fs.readFile(path.join(output, 'terms/Microsoft Terms of Use.docx')), await fs.readFile(terms));
+    assert.deepEqual(await fs.readFile(path.join(output, 'archive/official-fixture.zip')), await fs.readFile(archive));
+    assert.equal(await fs.readFile(path.join(output, 'notices/Branding Playbook.pptx'), 'utf8'), 'Synthetic fixture notice');
+    await assert.rejects(importEntraIcon({ ...options, accepted: true }), /EEXIST/);
+    const base = path.join(temporary, 'base.json');
+    await fs.writeFile(base, JSON.stringify({ prefix: 'azure', icons: { 'app-service': svgToIcon(sample) } }));
+    server = await createReader(source, { iconPack: base, entraIconPack: path.join(output, 'entra-icons.json') });
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    const response = await fetch(`http://127.0.0.1:${server.address().port}/api/icons/azure`);
+    const pack = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(pack.icons['entra-id'].body, svgToIcon(sample).body);
+    assert.equal(pack.icons['app-service'].body, svgToIcon(sample).body);
+  } finally {
+    if (server) await new Promise(resolve => server.close(resolve));
+    assert.equal(path.dirname(temporary), path.resolve(os.tmpdir()));
+    await fs.rm(temporary, { recursive: true, force: true });
+  }
+});
 
 test('SVG conversion preserves coordinates, root styling, and gradients', () => {
   const icon = svgToIcon(sample);
