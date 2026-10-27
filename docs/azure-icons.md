@@ -21,17 +21,26 @@ account, paid service, API key, CDN, or runtime internet connection is needed.
    ```
 
    Pass `--accept-terms` only after you have read and accepted the applicable
-   Microsoft and archive terms. The importer selects recognized service icons;
-   missing services are reported. Conflicting artwork or unsupported SVG content
-   stop the import rather than silently choosing or changing artwork.
+   Microsoft and archive terms. The importer scans all SVGs recursively, including
+   every subfolder. Identical copies are merged; distinct artwork sharing a name
+   receives stable hash suffixes. Unsupported or unsafe SVGs are skipped with
+   filenames and reasons recorded in `SOURCE.json` and `CATALOG.md`. No artwork
+   is silently changed to make it pass validation.
 4. Restart the reader and refresh your browser. No configuration changes are
    required. The pack is fetched from the local server only when a diagram
    references `azure:`.
 
 ## Available aliases
 
-The actual installed aliases are listed in `.local/azure-icons/SOURCE.json`.
-Availability depends on which files are in the downloaded archive.
+Find the complete searchable list of installed names and original files in
+`.local/azure-icons/CATALOG.md`. Names are generated from filenames: remove the
+official numeric and `icon-service-` prefixes, remove `.svg`, lowercase the name,
+and replace punctuation and spaces with hyphens. For example,
+`10000-icon-service-Virtual-Networks.svg` becomes `azure:virtual-networks`.
+The exact aliases and hashes are also recorded in `SOURCE.json`.
+
+The original seven convenience names remain available when the corresponding
+artwork is present and unambiguous:
 
 | Alias | Recognized official filename suffix (without `.svg`) |
 | --- | --- |
@@ -46,11 +55,16 @@ Availability depends on which files are in the downloaded archive.
 Numeric prefixes such as `10035-` and official prefixes such as
 `10035-icon-service-` are ignored when matching filenames. Byte-identical SVGs
 repeated across category folders are imported once, with the other paths recorded
-in provenance. Files with matching service names but different contents are
-rejected so you can choose the intended version explicitly. Other
-services can be added explicitly to `selections` in `scripts/import-azure-icons.mjs`.
+in provenance. Files with matching service names but different contents receive
+aliases such as `azure:example-012345abcdef`; use the exact name in the catalog.
+This avoids choosing one version silently. All other service names are generated
+automatically; no edits to the importer are needed to add services.
 
 ## Example flowchart
+
+For a complete example with subnets, private endpoints, availability zones,
+and monitoring, open [Private Azure web application](examples/azure-private-web-app.md)
+in the reader. It recreates the architecture image supplied with this project.
 
 ````markdown
 ```mermaid
@@ -81,18 +95,22 @@ diagrams continue to work without Azure artwork.
 `.local/azure-icons/` is ignored by Git and contains:
 
 - `azure-icons.json`: the generated Mermaid icon pack.
+- `CATALOG.md`: the full alias list, original paths, duplicate counts, and skipped SVGs.
 - `originals/`: byte-for-byte copies of the selected SVGs.
 - `TERMS.txt`: an unchanged copy of the terms you supplied.
 - `notices/`: license, terms, copyright, copying, and notice files found in the extracted archive.
 - `SOURCE.json`: the official source URL, import timestamp, archive name and
   SHA-256, supplied terms filename and SHA-256, original paths and SVG SHA-256s,
-  copied notice paths, and unavailable aliases.
+  copied notice paths, total source SVG count, skipped files and reasons, and
+  unavailable convenience aliases.
 
 Checksums record the files you supplied; they do not authenticate the download
 or verify that the extracted folder matches the ZIP. Obtain both from Microsoft.
 Retain the original download and any additional archive documentation yourself.
 
 The converter retains original SVG colors, coordinates, and proportions. It
+uses explicit positive pixel width and height if an SVG has no `viewBox`,
+preserving its native viewport without rewriting the original file. It
 rejects scripts, external references, and unsupported elements. It does not
 recolor the artwork when switching themes. Use icons to identify the actual
 Azure services in architecture diagrams, training, or documentation, with nearby

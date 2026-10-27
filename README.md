@@ -129,6 +129,10 @@ npm run icons:import -- "C:\Downloads\Azure-icons" --archive "C:\Downloads\Azure
 
 Restart and refresh after installation. Available aliases and examples are in the
 guide. Missing packs or aliases show a message and the diagram source.
+The importer scans the entire selected folder recursively. Browse
+`.local/azure-icons/CATALOG.md` for all installed icon names, source filenames,
+and any SVGs skipped during validation. The original seven service aliases are
+preserved when available; additional service names are generated automatically.
 
 ## Troubleshooting
 

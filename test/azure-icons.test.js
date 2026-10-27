@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { svgToIcon, importAzureIcons } from '../scripts/import-azure-icons.mjs';
+import { svgToIcon, importAzureIcons, iconName } from '../scripts/import-azure-icons.mjs';
 import { createReader } from '../server.js';
 
 // Original test artwork, not a Microsoft icon.
@@ -26,6 +26,15 @@ test('SVG conversion rejects active or external content and invalid coordinates'
     sample.replace('<defs>', '<use href="https://example.com/a"/><defs>'),
     sample.replace('24 18', '-1 18'),
   ]) assert.throws(() => svgToIcon(bad));
+});
+
+test('uses explicit pixel dimensions when viewBox is absent without accepting ambiguous dimensions', () => {
+  const source = '<svg width="18" height="24px"><path d="M0 0h18v24H0z"/></svg>';
+  const icon = svgToIcon(source);
+  assert.deepEqual([icon.left, icon.top, icon.width, icon.height], [0, 0, 18, 24]);
+  assert.match(icon.body, /M0 0h18v24H0z/);
+  for (const invalid of ['100%', '-18', '0', 'auto']) assert.throws(() => svgToIcon(source.replace('width="18"', `width="${invalid}"`)));
+  assert.throws(() => svgToIcon(source.replace('<svg ', '<svg viewBox="invalid" ')));
 });
 
 test('optional import preserves originals, terms and provenance and serves only the pack', async () => {
@@ -73,7 +82,7 @@ test('an absent optional pack returns an actionable message', async () => {
   } finally { await new Promise(resolve => server.close(resolve)); }
 });
 
-test('imports official filename prefixes and identical category copies but rejects conflicting artwork', async () => {
+test('imports official filenames, merges identical copies, and retains distinct artwork under stable names', async () => {
   const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'md-reader-icon-names-'));
   try {
     const source = path.join(temporary, 'source');
@@ -93,8 +102,45 @@ test('imports official filename prefixes and identical category copies but rejec
     assert.equal(manifest.icons[0].original, `compute/${filename}`);
     assert.deepEqual(manifest.icons[0].identicalCopies, [`web/${filename}`]);
     await fs.writeFile(path.join(source, 'web', filename), sample.replace('#0078d4', '#ff0000'));
-    await assert.rejects(importAzureIcons({ ...options, output: path.join(temporary, 'conflicting') }), /different artwork/);
-    assert.equal(await fs.stat(path.join(temporary, 'conflicting')).catch(() => null), null);
+    const variants = await importAzureIcons({ ...options, output: path.join(temporary, 'conflicting') });
+    assert.equal(variants.icons.length, 2);
+    assert.ok(variants.icons.every(icon => /^azure:app-service-[a-f0-9]{12}$/.test(icon.alias)));
+    assert.notEqual(variants.icons[0].alias, variants.icons[1].alias);
+    assert.deepEqual(variants.missing.includes('app-service'), true);
+  } finally {
+    assert.equal(path.dirname(temporary), path.resolve(os.tmpdir()));
+    await fs.rm(temporary, { recursive: true, force: true });
+  }
+});
+
+test('derives readable names and preserves the seven existing aliases', () => {
+  assert.equal(iconName('03438-icon-service-Azure-OpenAI.svg'), 'azure-openai');
+  assert.equal(iconName('10035-App-Services.svg'), 'app-service');
+  assert.equal(iconName('10023-icon-service-Kubernetes-Services.svg'), 'aks');
+  assert.equal(iconName('00001-icon-service-New_Service (Preview).svg'), 'new-service-preview');
+  assert.equal(iconName('Example & More.svg'), 'example-and-more');
+});
+
+test('imports arbitrary services recursively, writes a catalog, and reports unsafe files without blocking safe icons', async () => {
+  const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'md-reader-full-icons-'));
+  try {
+    const source = path.join(temporary, 'source');
+    await fs.mkdir(path.join(source, 'nested', 'category'), { recursive: true });
+    await fs.writeFile(path.join(source, 'nested/category/123-icon-service-New_Service.svg'), sample);
+    await fs.writeFile(path.join(source, '999-icon-service-Unsafe.svg'), sample.replace('<defs>', '<script>alert(1)</script><defs>'));
+    const archive = path.join(temporary, 'fixture.zip');
+    const terms = path.join(temporary, 'terms.txt');
+    await fs.writeFile(archive, 'Synthetic fixture archive');
+    await fs.writeFile(terms, 'Synthetic fixture terms');
+    const output = path.join(temporary, 'output');
+    const manifest = await importAzureIcons({ source, archive, terms, output, accepted: true });
+    assert.equal(manifest.sourceSvgCount, 2);
+    assert.equal(manifest.icons[0].alias, 'azure:new-service');
+    assert.equal(manifest.skipped.length, 1);
+    assert.match(manifest.skipped[0].reason, /script/);
+    assert.match(await fs.readFile(path.join(output, 'CATALOG.md'), 'utf8'), /azure:new-service/);
+    const pack = JSON.parse(await fs.readFile(path.join(output, 'azure-icons.json'), 'utf8'));
+    assert.equal(Object.hasOwn(pack.icons, 'unsafe'), false);
   } finally {
     assert.equal(path.dirname(temporary), path.resolve(os.tmpdir()));
     await fs.rm(temporary, { recursive: true, force: true });
