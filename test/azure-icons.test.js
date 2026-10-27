@@ -72,3 +72,31 @@ test('an absent optional pack returns an actionable message', async () => {
     assert.match((await response.json()).error, /docs\/azure-icons.md/);
   } finally { await new Promise(resolve => server.close(resolve)); }
 });
+
+test('imports official filename prefixes and identical category copies but rejects conflicting artwork', async () => {
+  const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'md-reader-icon-names-'));
+  try {
+    const source = path.join(temporary, 'source');
+    await fs.mkdir(path.join(source, 'compute'), { recursive: true });
+    await fs.mkdir(path.join(source, 'web'));
+    const filename = '10035-icon-service-App-Services.svg';
+    await fs.writeFile(path.join(source, 'compute', filename), sample);
+    await fs.writeFile(path.join(source, 'web', filename), sample);
+    const archive = path.join(temporary, 'fixture.zip');
+    const terms = path.join(temporary, 'terms.txt');
+    await fs.writeFile(archive, 'Synthetic archive bytes');
+    await fs.writeFile(terms, 'Synthetic fixture terms');
+    const options = { source, archive, terms, accepted: true, output: path.join(temporary, 'output') };
+    const manifest = await importAzureIcons(options);
+    assert.equal(manifest.icons.length, 1);
+    assert.equal(manifest.icons[0].alias, 'azure:app-service');
+    assert.equal(manifest.icons[0].original, `compute/${filename}`);
+    assert.deepEqual(manifest.icons[0].identicalCopies, [`web/${filename}`]);
+    await fs.writeFile(path.join(source, 'web', filename), sample.replace('#0078d4', '#ff0000'));
+    await assert.rejects(importAzureIcons({ ...options, output: path.join(temporary, 'conflicting') }), /different artwork/);
+    assert.equal(await fs.stat(path.join(temporary, 'conflicting')).catch(() => null), null);
+  } finally {
+    assert.equal(path.dirname(temporary), path.resolve(os.tmpdir()));
+    await fs.rm(temporary, { recursive: true, force: true });
+  }
+});

@@ -22,7 +22,7 @@ account, paid service, API key, CDN, or runtime internet connection is needed.
 
    Pass `--accept-terms` only after you have read and accepted the applicable
    Microsoft and archive terms. The importer selects recognized service icons;
-   missing services are reported. Ambiguous filenames or unsupported SVG content
+   missing services are reported. Conflicting artwork or unsupported SVG content
    stop the import rather than silently choosing or changing artwork.
 4. Restart the reader and refresh your browser. No configuration changes are
    required. The pack is fetched from the local server only when a diagram
@@ -43,7 +43,11 @@ Availability depends on which files are in the downloaded archive.
 | `azure:key-vault` | `Key-Vaults` or `Key-Vault` |
 | `azure:azure-openai` | `Azure-OpenAI` or `Azure-OpenAI-Service` |
 
-Numeric prefixes such as `10035-` are ignored when matching filenames. Other
+Numeric prefixes such as `10035-` and official prefixes such as
+`10035-icon-service-` are ignored when matching filenames. Byte-identical SVGs
+repeated across category folders are imported once, with the other paths recorded
+in provenance. Files with matching service names but different contents are
+rejected so you can choose the intended version explicitly. Other
 services can be added explicitly to `selections` in `scripts/import-azure-icons.mjs`.
 
 ## Example flowchart

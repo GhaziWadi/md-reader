@@ -66,13 +66,16 @@ export async function importAzureIcons({ source, archive, terms, accepted, outpu
   await walk(sourceRoot);
   const icons = {}, originals = [], missing = [], writes = [];
   for (const [alias, candidates] of Object.entries(selections)) {
-    const matching = files.filter(file => candidates.includes(path.basename(file).replace(/^\d+-/, '').replace(/\.svg$/i, '').toLowerCase()) && /\.svg$/i.test(file));
+    const matching = files.filter(file => candidates.includes(path.basename(file).replace(/^\d+-(?:icon-service-)?/i, '').replace(/\.svg$/i, '').toLowerCase()) && /\.svg$/i.test(file)).sort();
     if (!matching.length) { missing.push(alias); continue; }
-    if (matching.length > 1) throw new Error(`Ambiguous ${alias}: ${matching.join(', ')}. Use a folder with one official version of each icon.`);
+    // Official archives repeat identical SVGs in multiple service categories.
+    const copies = await Promise.all(matching.map(async file => ({ file, bytes: await fs.readFile(path.join(sourceRoot, file)) })));
+    if (copies.some(copy => !copy.bytes.equals(copies[0].bytes))) throw new Error(`Ambiguous ${alias}: ${matching.join(', ')}. The files contain different artwork. Use a folder with one official version of each icon.`);
     const original = matching[0];
-    const bytes = await fs.readFile(path.join(sourceRoot, original));
-    icons[alias] = svgToIcon(bytes.toString('utf8'));
-    originals.push({ alias: `azure:${alias}`, original, sha256: sha256(bytes) });
+    const bytes = copies[0].bytes;
+    try { icons[alias] = svgToIcon(bytes.toString('utf8')); }
+    catch (error) { throw new Error(`${original}: ${error.message}`, { cause: error }); }
+    originals.push({ alias: `azure:${alias}`, original, identicalCopies: matching.slice(1), sha256: sha256(bytes) });
     writes.push([`originals/${original}`, bytes]);
   }
   if (!originals.length) throw new Error('No supported Azure SVG filenames found. Point to the extracted official archive.');
