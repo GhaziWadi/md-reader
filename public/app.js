@@ -3,6 +3,7 @@ import { renderDiagrams, disposeDiagrams } from './diagrams.js';
 const $ = id => document.getElementById(id);
 let folder = '', currentFile = '', entries = [], rootName = '';
 let navigation = 0;
+let currentRemoteUrl = '';
 const storedTheme = localStorage.getItem('md-reader-theme');
 const themes = [...$('theme').options].map(option => option.value);
 const initialTheme = themes.includes(storedTheme) ? storedTheme : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
@@ -11,7 +12,7 @@ $('theme').value = initialTheme;
 
 function showError(error) { $('message').textContent = error.message; $('message').hidden = false; }
 async function api(endpoint, relative) {
-  const response = await fetch(`/api/${endpoint}?path=${encodeURIComponent(relative)}`);
+  const response = await fetch(`/api/${endpoint}?${endpoint === 'remote' ? 'url' : 'path'}=${encodeURIComponent(relative)}`);
   const data = await response.json();
   if (!response.ok) throw new Error(data.error);
   return data;
@@ -48,6 +49,12 @@ function breadcrumbs() {
 function navigate(state, replace = false) {
   const url = new URL(location.href); url.search = '';
   if (state.file) url.searchParams.set('file', state.file);
+  else if (state.remote) {
+    const remote = new URL(state.remote);
+    if (remote.hash && !state.hash) state.hash = remote.hash;
+    remote.hash = '';
+    url.searchParams.set('url', remote.href);
+  }
   else if (state.folder) url.searchParams.set('folder', state.folder);
   url.hash = state.hash || '';
   history[replace ? 'replaceState' : 'pushState']({}, '', url);
@@ -58,16 +65,29 @@ async function load() {
   $('message').hidden = true;
   const params = new URLSearchParams(location.search);
   const file = params.get('file') || '';
-  const nextFolder = file ? file.split('/').slice(0, -1).join('/') : params.get('folder') || '';
+  const remote = params.get('url') || '';
+  const nextFolder = remote ? folder : file ? file.split('/').slice(0, -1).join('/') : params.get('folder') || '';
+  $('remote-open').disabled = !!remote;
+  $('remote-open').textContent = remote ? 'Opening…' : 'Open';
+  $('remote-url').value = remote;
   try {
-    const [listing, documentData] = await Promise.all([api('list', nextFolder), file ? api('read', file) : null]);
+    const [listing, documentData] = await Promise.all([api('list', nextFolder), remote ? api('remote', remote) : file ? api('read', file) : null]);
     if (request !== navigation) return;
-    folder = nextFolder; currentFile = file; entries = listing.entries; rootName = listing.name;
+    folder = nextFolder; currentFile = remote ? '' : file; currentRemoteUrl = documentData?.url || ''; entries = listing.entries; rootName = listing.name;
     $('root-name').textContent = rootName; $('root-path').textContent = listing.root; $('root-path').title = listing.root;
     $('search').value = ''; $('up').disabled = !folder;
     renderFiles(); breadcrumbs();
-    $('welcome').hidden = !!file; $('document').hidden = !file;
-    document.title = file ? `${documentData.name} · Markdown Reader` : 'Markdown Reader';
+    if (remote) {
+      const local = document.createElement('button');
+      local.textContent = 'Local files'; local.onclick = () => navigate({ folder });
+      const source = document.createElement('a');
+      source.textContent = new URL(currentRemoteUrl).host;
+      source.href = currentRemoteUrl; source.target = '_blank'; source.rel = 'noreferrer';
+      source.title = currentRemoteUrl;
+      $('breadcrumbs').replaceChildren(local, document.createTextNode(' / '), source);
+    }
+    $('welcome').hidden = !!documentData; $('document').hidden = !documentData;
+    document.title = documentData ? `${documentData.name} · Markdown Reader` : 'Markdown Reader';
     if (documentData) {
       disposeDiagrams($('content'));
       $('content').innerHTML = documentData.html;
@@ -80,7 +100,9 @@ async function load() {
       });
       $('file-label').textContent = documentData.name;
       $('read-time').textContent = `${Math.max(1, Math.ceil($('content').textContent.split(/\s+/).length / 220))} min read`;
-      $('modified').textContent = `Last updated ${new Date(documentData.modified).toLocaleString()}`;
+      $('modified').textContent = documentData.modified
+        ? `Last updated ${new Date(documentData.modified).toLocaleString()}${remote ? ` · ${new URL(currentRemoteUrl).host}` : ''}`
+        : 'Remote document · No modification date provided';
       await renderDiagrams($('content'), document.documentElement.dataset.theme);
       if (request !== navigation) return;
     }
@@ -88,7 +110,14 @@ async function load() {
       document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView();
     } else window.scrollTo(0, 0);
   } catch (error) { if (request === navigation) showError(error); }
+  finally {
+    if (request === navigation) { $('remote-open').disabled = false; $('remote-open').textContent = 'Open'; }
+  }
 }
+$('remote-form').onsubmit = event => {
+  event.preventDefault();
+  try { navigate({ remote: $('remote-url').value.trim() }); } catch (error) { showError(error); }
+};
 $('search').oninput = renderFiles;
 $('up').onclick = () => navigate({ folder: folder.split('/').slice(0, -1).join('/') });
 $('refresh').onclick = load;
@@ -102,6 +131,15 @@ $('content').onclick = event => {
   const link = event.target.closest('a');
   if (!link || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
   const url = new URL(link.href, location.href);
+  if (['http:', 'https:'].includes(url.protocol)) {
+    const target = new URL(url); target.hash = '';
+    if (currentRemoteUrl && target.href === currentRemoteUrl && url.hash) {
+      event.preventDefault(); location.hash = url.hash; return;
+    }
+    if (url.origin !== location.origin && (/\.(md|markdown|mdown)$/i.test(url.pathname) || url.hostname === 'github.com' && url.pathname.includes('/blob/'))) {
+      event.preventDefault(); navigate({ remote: url.href }); return;
+    }
+  }
   if (url.origin === location.origin && url.pathname.startsWith('/files/') && /\.(md|markdown|mdown)$/i.test(url.pathname)) {
     event.preventDefault(); navigate({ file: decodeURIComponent(url.pathname.slice(7)), hash: url.hash });
   }

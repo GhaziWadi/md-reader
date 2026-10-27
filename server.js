@@ -5,6 +5,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawn } from 'node:child_process';
 import { marked } from 'marked';
 import sanitizeHtml from 'sanitize-html';
+import { readRemoteMarkdown } from './remote-markdown.js';
 
 const publicRoot = fileURLToPath(new URL('./public/', import.meta.url));
 const mermaidRoot = fileURLToPath(new URL('./node_modules/mermaid/dist/', import.meta.url));
@@ -25,7 +26,11 @@ export async function safePath(root, relative = '') {
   return candidate;
 }
 
-export function renderMarkdown(source, relative) {
+export function renderMarkdown(source, relative, { remoteUrl } = {}) {
+  const resolveUrl = value => {
+    if (!remoteUrl || !value || value.startsWith('#')) return localUrl(value, relative);
+    try { return new URL(value, remoteUrl).href; } catch { return undefined; }
+  };
   const html = marked.parse(source, { gfm: true, breaks: false });
   return sanitizeHtml(html, {
     allowedTags: [...sanitizeHtml.defaults.allowedTags, 'img', 'del', 'input', 'details', 'summary'],
@@ -33,15 +38,15 @@ export function renderMarkdown(source, relative) {
       ...sanitizeHtml.defaults.allowedAttributes,
       '*': ['id'],
       a: ['href', 'title'],
-      img: ['src', 'alt', 'title', 'width', 'height', 'loading'],
+      img: ['src', 'alt', 'title', 'width', 'height', 'loading', 'referrerpolicy'],
       code: ['class'],
       input: ['type', 'checked', 'disabled'],
       th: ['align'], td: ['align'],
     },
     transformTags: {
       input: (_tag, attrs) => ({ tagName: 'input', attribs: { type: 'checkbox', disabled: '', ...(Object.hasOwn(attrs, 'checked') ? { checked: '' } : {}) } }),
-      a: (_tag, attrs) => ({ tagName: 'a', attribs: { ...attrs, href: localUrl(attrs.href, relative) } }),
-      img: (_tag, attrs) => ({ tagName: 'img', attribs: { ...attrs, src: localUrl(attrs.src, relative), loading: 'lazy' } }),
+      a: (_tag, attrs) => ({ tagName: 'a', attribs: { ...attrs, href: resolveUrl(attrs.href) } }),
+      img: (_tag, attrs) => ({ tagName: 'img', attribs: { ...attrs, src: resolveUrl(attrs.src), loading: 'lazy', ...(remoteUrl ? { referrerpolicy: 'no-referrer' } : {}) } }),
     },
   });
 }
@@ -55,6 +60,7 @@ function localUrl(value, relative) {
 export async function createReader(directory, {
   iconPack = fileURLToPath(new URL('./.local/azure-icons/azure-icons.json', import.meta.url)),
   entraIconPack = fileURLToPath(new URL('./.local/entra-icons/entra-icons.json', import.meta.url)),
+  remoteReader = readRemoteMarkdown,
 } = {}) {
   const root = await fs.realpath(path.resolve(directory));
   if (!(await fs.stat(root)).isDirectory()) throw new Error('Choose a directory, not a file.');
@@ -66,6 +72,12 @@ export async function createReader(directory, {
     try {
       if (req.method !== 'GET') return send(405, { error: 'Only reading is supported.' });
       const url = new URL(req.url, 'http://localhost');
+      if (url.pathname === '/api/remote') {
+        if (req.headers['sec-fetch-site'] === 'cross-site') return send(403, { error: 'Open remote URLs from the reader interface.' });
+        const document = await remoteReader(url.searchParams.get('url') || '');
+        const name = decodeURIComponent(new URL(document.url).pathname.split('/').pop() || 'Remote document');
+        return send(200, { name, url: document.url, html: renderMarkdown(document.source, '', { remoteUrl: document.url }), modified: document.modified });
+      }
       if (url.pathname === '/api/icons/azure') {
         try {
           const pack = JSON.parse(await fs.readFile(iconPack, 'utf8'));

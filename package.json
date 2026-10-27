@@ -9,6 +9,7 @@
     "start": "node server.js",
     "test": "node --test",
     "test:browser": "node scripts/check-mermaid.mjs",
+    "test:remote-browser": "node scripts/check-remote.mjs",
     "icons:import": "node scripts/import-azure-icons.mjs",
     "icons:import-entra": "node scripts/import-entra-icon.mjs",
     "licenses:generate": "node scripts/dependency-licenses.mjs",

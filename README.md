@@ -7,7 +7,7 @@ A local, read-only Markdown browser. Point it at a directory to browse Markdown 
 - Node.js 22.12 or newer, with npm.
 - A modern browser. The app opens your default browser automatically.
 
-Dependencies need an internet connection to install. Once installed, Markdown and Mermaid rendering run locally without a CDN. Remote images referenced by a document still need access to their source.
+Dependencies need an internet connection to install. Once installed, Markdown and Mermaid rendering run locally without a CDN. Opening remote Markdown URLs and loading remote images require access to their source.
 
 ## Quick start
 
@@ -68,6 +68,34 @@ Choose a theme from the dropdown next to **Print**. Your selection is remembered
 | Ocean | Deep blue pages with turquoise accents. |
 
 The theme applies to the sidebar, document, tables, code blocks, and controls. Mermaid diagrams use a matching light or dark appearance.
+
+### Remote Markdown URLs
+
+Paste a public HTTP or HTTPS file URL into **Open Markdown URL** in the sidebar,
+then click **Open**. Markdown and plain text responses are rendered using the
+same formatting, Mermaid diagrams, Azure icons, themes, printing, and zoom as
+local files. No files are saved into your local folder.
+
+For GitHub, either paste a raw URL or a normal file link such as
+`https://github.com/owner/repository/blob/main/README.md`; the reader converts
+GitHub file links to their raw-content URLs automatically. For other hosts,
+use the direct/raw Markdown file URL, rather than the site's HTML preview page.
+Authenticated pages and browser login sessions are not supported: the reader
+does not forward cookies or authorization headers.
+
+Relative links and images resolve against the final document URL, including
+after redirects. Links to other `.md`, `.markdown`, and `.mdown` files open in
+the reader; ordinary website links open normally. Heading anchors work within
+the reader. The hostname link above a remote document opens its source in a new
+tab. **Local files** returns to your local folder, which remains available in
+the sidebar.
+
+Remote document URLs are bookmarkable, and browser Back/Forward restore previous
+documents. **Refresh** fetches the remote document again. The remote source must
+be publicly accessible: local, private-network, link-local, and reserved network
+addresses are blocked, including DNS results and redirect destinations. Fetches
+have a 15-second total timeout, a five-redirect limit, and a 10 MB file limit
+(also checked after decompression). HTML pages and binary responses are rejected.
 
 ### Markdown links and images
 
@@ -160,6 +188,9 @@ project directory and browse `docs/examples` to view them.
 | A file or folder no longer exists | Click **Refresh** or navigate back to its parent folder. |
 | A diagram shows an error | Expand **Diagram source** and check the Mermaid syntax. After an app update, run `npm install`, restart the server, and refresh the browser. |
 | A relative link or image fails | Check that the target exists within the selected root folder and that its file type is supported. |
+| A URL opens a sign-in or HTML page | Use a public raw Markdown URL. Browser cookies and login sessions are not forwarded. |
+| A remote URL is blocked | Use a public internet host. Local and private network destinations are intentionally blocked. |
+| A remote URL times out | Try **Refresh**, check connectivity, or use another public source. |
 
 ## Privacy and limits
 
@@ -170,6 +201,7 @@ project directory and browse `docs/examples` to view them.
 - Hidden folders are included. There are no configured folder exclusions.
 - Documents larger than 10 MB are rejected.
 - Your browser may contact external servers to load remote images referenced in a document.
+- Opening a remote URL makes an outbound request from the local reader to that public server. Documents are rendered in memory and are not saved to your local folder.
 
 ## Verify
 
@@ -183,6 +215,14 @@ To check actual diagram rendering, run the optional browser smoke test. It launc
 
 ```powershell
 npm run test:browser
+```
+
+Remote URL form, relative-link navigation, browser history, error messages,
+and returning to local files have a separate browser check using controlled
+remote fixtures (no external network required):
+
+```powershell
+npm run test:remote-browser
 ```
 
 If the test cannot find your browser, set its executable path:
