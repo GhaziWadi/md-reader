@@ -156,6 +156,44 @@ then import a fresh pack. The importer refuses to overwrite an existing director
 so that notices from different releases are not mixed. Remove or move that local
 directory to uninstall, then restart and refresh.
 
+## Troubleshooting
+
+### Import command fails with "pass --accept-terms"
+
+If the `npm run icons:import` command fails with "Read Microsoft's and the archive's
+terms, then pass --accept-terms to acknowledge them" even when you included the flag,
+the issue is that **npm strips trailing flags** before passing arguments to scripts.
+
+**Solution:** Call the script directly with `node` instead:
+
+```powershell
+node scripts/import-azure-icons.mjs "C:\Downloads\Azure-icons" --archive "C:\Downloads\Azure-icons.zip" --terms "C:\Downloads\Azure-icon-terms.txt" --accept-terms
+```
+
+Same applies to the Entra import:
+
+```powershell
+node scripts/import-entra-icon.mjs "C:\Downloads\Entra-extracted" --archive "C:\Downloads\Microsoft-Entra-icons.zip" --terms "C:\Downloads\Microsoft Terms of Use.docx" --accept-terms
+```
+
+### Archive file not found
+
+If the command fails with "ENOENT: no such file or directory", verify the exact
+filename of the ZIP archive you downloaded. Microsoft may change archive naming
+conventions between releases. For example, Entra icon archives may be named:
+
+- `Microsoft Entra architecture icons - Oct 2023.zip`
+- `Microsoft Entra architecture Icons.zip`
+- `Microsoft-Entra-icons.zip`
+
+List your downloaded files to find the correct name:
+
+```powershell
+Get-ChildItem "C:\Downloads" -Filter "*.zip" | Select-Object Name
+```
+
+Then use the exact filename in your command.
+
 ## Repository and release policy
 
 Commit importer code, examples, project licensing, and dependency notices.
