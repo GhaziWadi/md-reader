@@ -33,12 +33,14 @@ export function renderMarkdown(source, relative, { remoteUrl } = {}) {
   };
   const html = marked.parse(source, { gfm: true, breaks: false });
   return sanitizeHtml(html, {
-    allowedTags: [...sanitizeHtml.defaults.allowedTags, 'img', 'del', 'input', 'details', 'summary'],
+    allowedTags: [...sanitizeHtml.defaults.allowedTags, 'img', 'video', 'source', 'del', 'input', 'details', 'summary'],
     allowedAttributes: {
       ...sanitizeHtml.defaults.allowedAttributes,
       '*': ['id'],
       a: ['href', 'title'],
       img: ['src', 'alt', 'title', 'width', 'height', 'loading', 'referrerpolicy'],
+      video: ['src', 'width', 'height', 'controls', 'autoplay', 'loop', 'muted'],
+      source: ['src', 'type'],
       code: ['class'],
       input: ['type', 'checked', 'disabled'],
       th: ['align'], td: ['align'],

@@ -21,9 +21,9 @@ In this screen recording, we demonstrate:
 
 ## Watch the Demo
 
-<video width="1280" height="720" controls>
+<video width="1280" height="720" controls style="max-width: 100%; border: 1px solid #ccc; border-radius: 4px;">
   <source src="demo-video/demo-video.mp4" type="video/mp4">
-  Your browser does not support the video tag.
+  Your browser does not support the video tag. <a href="demo-video/demo-video.mp4">Download the video</a>
 </video>
 
 ## Getting Started
