@@ -21,10 +21,9 @@ In this screen recording, we demonstrate:
 
 ## Watch the Demo
 
-<video width="1280" height="720" controls style="max-width: 100%; border: 1px solid #ccc; border-radius: 4px;">
-  <source src="demo-video/demo-video.mp4" type="video/mp4">
-  Your browser does not support the video tag. <a href="demo-video/demo-video.mp4">Download the video</a>
-</video>
+<iframe width="1280" height="720" src="https://www.youtube.com/embed/pMPoWJm7qKk" title="MD Reader Demo - Documentation as Code" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen style="border-radius: 4px;"></iframe>
+
+[Watch on YouTube](https://youtu.be/pMPoWJm7qKk)
 
 ## Getting Started
 
